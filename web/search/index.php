@@ -15,7 +15,7 @@ if ($id !== '') {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>HarbourTech - Staff Portal</title>
+  <title>MeowMeowCat92 - Staff Portal</title>
   <style>
     body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; color: #333; margin: 0; }
     header { background: #1a2c4e; color: white; padding: 16px 32px; }
@@ -34,9 +34,8 @@ if ($id !== '') {
   </style>
 </head>
 <body>
-<!-- SMC{P4TH_FINDER} -->
 <header>
-  <h1>HarbourTech Solutions &mdash; Staff Portal</h1>
+  <h1>MeowMeowCat92 Solutions &mdash; Staff Portal</h1>
 </header>
 <div class="container">
   <h2>Employee Lookup</h2>
@@ -53,6 +52,7 @@ if ($id !== '') {
   <p style="color:#c0392b;">No employee found.</p>
   <?php endif; ?>
   <p class="hint">Internal use only. Authorised personnel only.</p>
+  <p style="margin-top:16px;font-family:monospace;color:#2e5fa3;">SMC{P4TH_FINDER}</p>
 </div>
 </body>
 </html>
