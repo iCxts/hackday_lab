@@ -6,10 +6,10 @@ RUN apt-get update && apt-get install -y \
     openssh-server \
     apache2 \
     php \
-    php-sqlite3 \
+    php-pgsql \
     libapache2-mod-php \
     zip \
-    sqlite3 \
+    postgresql \
     && rm -rf /var/lib/apt/lists/*
 
 COPY setup/ /setup/

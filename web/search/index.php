@@ -1,11 +1,11 @@
 <?php
-$db = new SQLite3('/var/www/html/db/company.db');
+$conn = pg_connect("host=127.0.0.1 port=5432 dbname=company user=webapp password=webapp123");
 $id = $_GET['id'] ?? '';
 $output = '';
 if ($id !== '') {
-    $result = $db->query("SELECT name, department FROM employees WHERE id = $id");
+    $result = pg_query($conn, "SELECT name, department FROM employees WHERE id = $id");
     if ($result) {
-        while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        while ($row = pg_fetch_assoc($result)) {
             $output .= '<tr><td>' . $row['name'] . '</td><td>' . $row['department'] . '</td></tr>';
         }
     }

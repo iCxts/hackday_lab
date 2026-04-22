@@ -2,23 +2,26 @@
 set -e
 
 # --- Database ---
-mkdir -p /var/www/html/db
+service postgresql start
+sleep 3
 
 HASH=$(echo -n "sunshine" | md5sum | cut -d' ' -f1)
 
-sqlite3 /var/www/html/db/company.db << SQL
+sudo -u postgres psql -c "CREATE USER webapp WITH PASSWORD 'webapp123';"
+sudo -u postgres psql -c "CREATE DATABASE company OWNER webapp;"
+sudo -u postgres psql -d company -c "
 CREATE TABLE employees (
-    id       INTEGER PRIMARY KEY,
-    name     TEXT,
+    id SERIAL PRIMARY KEY,
+    name TEXT,
     username TEXT,
     password TEXT,
     department TEXT
 );
-INSERT INTO employees VALUES (1, 'John Smith', 'john', '${HASH}', 'Sales');
-SQL
+INSERT INTO employees (id, name, username, password, department) VALUES (1, 'John Smith', 'john', '${HASH}', 'Sales');
+GRANT ALL ON employees TO webapp;
+"
 
-chmod 644 /var/www/html/db/company.db
-chown -R www-data:www-data /var/www/html/db
+service postgresql stop
 
 # --- Users ---
 useradd -m -s /bin/bash john
