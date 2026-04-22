@@ -9,7 +9,7 @@ docker compose up --build
 ```
 
 - Web: `http://localhost:8081`
-- SSH: `localhost:2323`
+- SSH: `localhost:22`
 
 ## Flags
 

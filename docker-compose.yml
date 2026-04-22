@@ -3,6 +3,6 @@ services:
     build: .
     container_name: sqli_ssh_lab1
     ports:
-      - "2323:22"
+      - "22:22"
       - "8081:80"
     restart: unless-stopped
