@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     php-pgsql \
     libapache2-mod-php \
     zip \
+    sudo \
     postgresql \
     && rm -rf /var/lib/apt/lists/*
 

